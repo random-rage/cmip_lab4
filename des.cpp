@@ -955,110 +955,106 @@ ulong des_decrypt_cbc(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64
 	return i;
 }
 
-ulong des_encrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv)
+ulong des_encrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv, ulong blocklen)
 {
-	ulong64 keys[16];
-	ulong64 block, vector = iv;
-	ulong i = 0, endLen = srclen % 8;
+	if (blocklen == 0)
+		throw "Length of the block must not be 0!";
 
+	if (srclen % blocklen != 0)
+		throw "Length of the source buffer must be multiple of blocklen!";
+
+	ulong64 keys[16];
+	ULong64 block, vector;
+	ulong i = 0;
+	
+	vector.s = iv;
 	des_create_keys(key, keys);
 
-	for (; i < (srclen - endLen); i += 8)
+	for (; i < srclen; i += blocklen)
 	{
-		vector = des_encrypt_block(vector, keys);
+		vector.s = des_encrypt_block(vector.s, keys);
 
-		GET_ULONG_BE(block.h, src, i);
-		GET_ULONG_BE(block.l, src, i + 4);
+		block = vector;
+		block.v >>= 64 - blocklen;
 
-		block.h ^= vector.h;
-		block.l ^= vector.l;
+		block.v ^= get_block_by_offset(src, i, blocklen);
 
-		PUT_ULONG_BE(block.h, dst, i);
-		PUT_ULONG_BE(block.l, dst, i + 4);
+		vector.v <<= blocklen;
+		vector.v |= block.v;
 
-		vector = block;
-	}
-
-	// Process last t bits
-	if (endLen != 0)
-	{
-		vector = des_encrypt_block(vector, keys);
-
-		for (size_t j = 7; i < srclen; i++, j--)
-			dst[i] = src[i] ^ ((uchar *)(&vector))[j];
+		put_block_by_offset(dst, i, block.v, blocklen);
 	}
 
 	return i;
 }
 
-ulong des_decrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv)
+ulong des_decrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv, ulong blocklen)
 {
-	ulong64 keys[16];
-	ulong64 block, vector = iv;
-	ulong i = 0, endLen = srclen % 8;
+	if (blocklen == 0)
+		throw "Length of the block must not be 0!";
 
+	if (srclen % blocklen != 0)
+		throw "Length of the source buffer must be multiple of blocklen!";
+
+	ulong64 keys[16];
+	ULong64 block, vector;
+	unsigned long long result;
+	ulong i = 0;
+
+	vector.s = iv;
 	des_create_keys(key, keys);
 
-	for (; i < (srclen - endLen); i += 8)
+	for (; i < srclen; i += blocklen)
 	{
-		vector = des_encrypt_block(vector, keys);
+		vector.s = des_encrypt_block(vector.s, keys);
 
-		GET_ULONG_BE(block.h, src, i);
-		GET_ULONG_BE(block.l, src, i + 4);
+		result = vector.v >> 64 - blocklen;
 
-		PUT_ULONG_BE(vector.h ^ block.h, dst, i);
-		PUT_ULONG_BE(vector.l ^ block.l, dst, i + 4);
+		block.v = get_block_by_offset(src, i, blocklen);
 
-		vector = block;
-	}
+		vector.v <<= blocklen;
+		vector.v |= block.v;
 
-	// Process last t bits
-	if (endLen != 0)
-	{
-		vector = des_encrypt_block(vector, keys);
-
-		for (size_t j = 7; i < srclen; i++, j--)
-			dst[i] = src[i] ^ ((uchar *)(&vector))[j];
+		put_block_by_offset(dst, i, block.v ^ result, blocklen);
 	}
 
 	return i;
 }
 
-ulong des_encrypt_ofb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv)
+ulong des_encrypt_ofb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv, ulong blocklen)
 {
-	ulong64 keys[16];
-	ulong64 block, vector = iv;
-	ulong i = 0, endLen = srclen % 8;
-
-	des_create_keys(key, keys);
-
-	for (; i < (srclen - endLen); i += 8)
-	{
-		vector = des_encrypt_block(vector, keys);
-
-		GET_ULONG_BE(block.h, src, i);
-		GET_ULONG_BE(block.l, src, i + 4);
-
-		block.h ^= vector.h;
-		block.l ^= vector.l;
-
-		PUT_ULONG_BE(block.h, dst, i);
-		PUT_ULONG_BE(block.l, dst, i + 4);
-	}
-
-	// Process last t bits
-	if (endLen != 0)
-	{
-		vector = des_encrypt_block(vector, keys);
-
-		for (size_t j = 7; i < srclen; i++, j--)
-			dst[i] = src[i] ^ ((uchar *)(&vector))[j];
-	}
-
-	return i;
+	return 0;
 }
 
-ulong des_decrypt_ofb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv)
+ulong des_decrypt_ofb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv, ulong blocklen)
 {
-	return des_encrypt_ofb(src, srclen, dst, key, iv);
+	return 0;
+}
+
+unsigned long long get_block_by_offset(uchar *src, ulong offset, ulong blocklen)
+{
+	unsigned long long block;
+	ulong bit;
+
+	block = 0;
+
+	for (ulong i = 0; i < blocklen; i++)
+	{
+		GET_BIT_BE(bit, src, offset / 8, offset % 8);
+		offset++;
+		block <<= 1;
+		block += bit;
+	}
+
+	return block;
+}
+
+void put_block_by_offset(uchar *dst, ulong offset, unsigned long long block, ulong blocklen)
+{
+	for (ulong i = 0; i < blocklen; i++)
+	{
+		PUT_BIT_BE(block % 2 == 1, dst, offset / 8, offset % 8);
+		offset++;
+		block >>= 1;
+	}
 }

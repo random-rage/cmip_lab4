@@ -13,6 +13,14 @@ typedef struct _ulong64
 } ulong64;
 
 //==========================================================================
+// Описание объединения 64-х битного блока и 64-битного беззнакового целого
+typedef union ULong64
+{
+	ulong64 s;					// Structure
+	unsigned long long v;		// Value
+};
+
+//==========================================================================
 // Получение 32-х битного числа из потока байт по позиции (формат BIG ENDIAN)
 // BIG ENDIAN - ПЕРВЫМ БАЙТ ПОТОКА БУДЕТ СТАРШИМ БАЙТОВ В ЧИСЛЕ
 // Параметры:
@@ -46,6 +54,35 @@ typedef struct _ulong64
 #endif
 
 //==========================================================================
+// Получение бита из потока байт по позиции и смещению (формат BIG ENDIAN)
+// Параметры:
+//   bool n   - булева переменная, в которую записывается бит
+//   uchar* b - входной поток байт
+//   ulong i  - позиция, с которой начинается чтение данных из входного потока
+//	 ulong o  - смещение бита в байте
+#ifndef GET_BIT_BE
+#define GET_BIT_BE(n,b,i,o)					\
+{                                           \
+    (n) = (( 0x80 >> o ) & (b)[(i)]) != 0;	\
+}
+#endif
+
+//==========================================================================
+// Запись бита в поток байт по позиции и смещению (формат BIG ENDIAN)
+// Параметры:
+//   bool n   - бит, который надо записать
+//   uchar* b - выходной поток байт
+//   ulong i  - позиция, с которой начинается запись данных в выходной поток
+//	 ulong o  - смещение бита в байте
+#ifndef PUT_BIT_BE
+#define PUT_BIT_BE(n,b,i,o)							\
+{													\
+    (b)[(i)] = (n) ? (( 0x80 >> o ) | (b)[(i)]) :	\
+					 (~( 0x80 >> o ) & (b)[(i)]);	\
+}
+#endif
+
+//==========================================================================
 // Функция формирования 16-ти раундовых ключей шифрования DES
 // Параметры:
 //   - src - 64-х битный ключ алгоритма DES
@@ -72,9 +109,10 @@ ulong64 des_decrypt_block(ulong64 src, ulong64 keys[16]);
 // УКАЗАНЫ НИЖЕ. 
 // ПАРАМЕТРЫ:
 //   - SRC - ВХОДНОЕ СООБЩЕНИЕ (КРИПТОГРАММА)
-//   - SRCLEN - РАЗМЕР ВХОДНОГО СООБЩЕНИЯ (КРИПТОГРАММЫ)
+//   - SRCLEN - РАЗМЕР ВХОДНОГО СООБЩЕНИЯ (КРИПТОГРАММЫ): ДЛЯ ECB и CBC - В БАЙТАХ, ДЛЯ CFB И OFB - В БИТАХ
 //   - DST - КРИПТОГРАММА (СООБЩЕНИЕ)
 //   - IV - ИНИЦИАЛИЗАЦИОННЫЙ ВЕКТОР ДЛЯ РЕЖИМОВ (CBC, CFB, OFB)
+//	 - BLOCKLEN - РАЗМЕР БЛОКА ОБРАБАТЫВАЕМОГО СООБЩЕНИЯ В БИТАХ
 
 // ECB
 ulong des_encrypt_ecb(uchar *src, ulong srclen, uchar *dst, ulong64 key);
@@ -85,9 +123,28 @@ ulong des_encrypt_cbc(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64
 ulong des_decrypt_cbc(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv);
 
 // CFB
-ulong des_encrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv);
-ulong des_decrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv);
+ulong des_encrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv, ulong blocklen);
+ulong des_decrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv, ulong blocklen);
 
 // OFB
-ulong des_encrypt_ofb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv);
-ulong des_decrypt_ofb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv);
+ulong des_encrypt_ofb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv, ulong blocklen);
+ulong des_decrypt_ofb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv, ulong blocklen);
+
+//==========================================================================
+// Функция получения блока битов определённой длины из входного потока байтов по смещению
+// Параметры:
+//   - src		- входной поток байтов
+//   - offset	- смещение (индекс бита) во входном потоке
+//	 - blocklen - размер блока битов
+// Результат:
+//   - 64-битный блок, содержащий блок битов в BigEndian, дополненный слева нулями
+unsigned long long get_block_by_offset(uchar *src, ulong offset, ulong blocklen);
+
+//==========================================================================
+// Функция записи блока битов определённой длины из входного блока в выходной поток байтов по смещению
+// Параметры:
+//   - dst		- выходной поток байтов
+//   - offset	- смещение (индекс бита) в выходном потоке
+//	 - block	- 64-битный блок, содержащий блок битов в BigEndian, дополненный слева нулями
+//	 - blocklen - размер блока битов
+void put_block_by_offset(uchar *dst, ulong offset, unsigned long long block, ulong blocklen);
