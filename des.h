@@ -14,7 +14,7 @@ typedef struct _ulong64
 
 //==========================================================================
 // Описание объединения 64-х битного блока и 64-битного беззнакового целого
-typedef union ULong64
+union ULong64
 {
 	ulong64 s;					// Structure
 	unsigned long long v;		// Value

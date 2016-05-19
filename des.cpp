@@ -1020,12 +1020,39 @@ ulong des_decrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64
 
 ulong des_encrypt_ofb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv, ulong blocklen)
 {
-	return 0;
+	if (blocklen == 0)
+		throw "Length of the block must not be 0!";
+
+	if (srclen % blocklen != 0)
+		throw "Length of the source buffer must be multiple of blocklen!";
+
+	ulong64 keys[16];
+	ULong64 result, vector;
+	ulong i = 0;
+
+	vector.s = iv;
+	des_create_keys(key, keys);
+
+	for (; i < srclen; i += blocklen)
+	{
+		result.s = des_encrypt_block(vector.s, keys);
+
+		result.v >>= 64 - blocklen;
+
+		vector.v <<= blocklen;
+		vector.v |= result.v;
+
+		result.v ^= get_block_by_offset(src, i, blocklen);
+
+		put_block_by_offset(dst, i, result.v, blocklen);
+	}
+
+	return i;
 }
 
 ulong des_decrypt_ofb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64 iv, ulong blocklen)
 {
-	return 0;
+	return des_encrypt_ofb(src, srclen, dst, key, iv, blocklen);
 }
 
 unsigned long long get_block_by_offset(uchar *src, ulong offset, ulong blocklen)

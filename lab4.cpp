@@ -1,7 +1,7 @@
 // lab4.cpp: определяет точку входа для консольного приложения.
 //
 #define MSG_LEN 256
-#define BIT_LEN 44
+#define BIT_LEN 2
 
 #include "stdafx.h"
 #include "lcg.h"
@@ -57,34 +57,21 @@ int main()
 		ulong64 iv = GenerateULONG(lcg);								// IV generation
 
 		printf("Source message: \"%s\"\n\n", source);
-/*
-		// OFB mode
-		result = des_encrypt_ofb(source, len, encrypted, key, iv);
-		printf_s(" Encrypted OFB: \"%.*s\"\n", result, encrypted);
-
-		result = des_decrypt_ofb(encrypted, result, decrypted, key, iv);
-		printf(" Decrypted OFB: \"%s\"\n", decrypted);
-
-		encrypted[0] = InvertBit(encrypted[0], 2);
-		printf_s(" Corrupted OFB: \"%.*s\"\n", result, encrypted);
-
-		result = des_decrypt_ofb(encrypted, result, decrypted, key, iv);
-		printf(" Decrypted OFB: \"%s\"\n\n", decrypted);
-*/
-		// CFB mode
-		result = des_encrypt_cfb(source, len * 8, encrypted, key, iv, BIT_LEN);
-		printf_s(" Encrypted CFB: \"%.*s\"\n", result / 8, encrypted);
-
-		result = des_decrypt_cfb(encrypted, result, decrypted, key, iv, BIT_LEN);
-		printf(" Decrypted CFB: \"%s\"\n", decrypted);
-
-		encrypted[0] = InvertBit(encrypted[0], 2);
-		printf_s(" Corrupted CFB: \"%.*s\"\n", result / 8, encrypted);
-
-		result = des_decrypt_cfb(encrypted, result, decrypted, key, iv, BIT_LEN);
-		printf(" Decrypted CFB: \"%s\"\n\n", decrypted);
 
 		len = AppendRandom(lcg, source, len);
+		// ECB mode
+		result = des_encrypt_ecb(source, len, encrypted, key);
+		printf_s(" Encrypted ECB: \"%.*s\"\n", result, encrypted);
+
+		result = des_decrypt_ecb(encrypted, result, decrypted, key);
+		printf(" Decrypted ECB: \"%s\"\n", decrypted);
+
+		encrypted[0] = InvertBit(encrypted[0], 2);
+		printf_s(" Corrupted ECB: \"%.*s\"\n", result, encrypted);
+
+		result = des_decrypt_ecb(encrypted, result, decrypted, key);
+		printf(" Decrypted ECB: \"%s\"\n\n", decrypted);
+
 		// CBC mode
 		result = des_encrypt_cbc(source, len, encrypted, key, iv);
 		printf_s(" Encrypted CBC: \"%.*s\"\n", result, encrypted);
@@ -98,18 +85,31 @@ int main()
 		result = des_decrypt_cbc(encrypted, result, decrypted, key, iv);
 		printf(" Decrypted CBC: \"%s\"\n\n", decrypted);
 
-		// ECB mode
-		result = des_encrypt_ecb(source, len, encrypted, key);
-		printf_s(" Encrypted ECB: \"%.*s\"\n", result, encrypted);
+		// CFB mode
+		result = des_encrypt_cfb(source, len * 8, encrypted, key, iv, BIT_LEN);
+		printf_s(" Encrypted CFB: \"%.*s\"\n", result / 8, encrypted);
 
-		result = des_decrypt_ecb(encrypted, result, decrypted, key);
-		printf(" Decrypted ECB: \"%s\"\n", decrypted);
+		result = des_decrypt_cfb(encrypted, result, decrypted, key, iv, BIT_LEN);
+		printf(" Decrypted CFB: \"%s\"\n", decrypted);
 
 		encrypted[0] = InvertBit(encrypted[0], 2);
-		printf_s(" Corrupted ECB: \"%.*s\"\n", result, encrypted);
+		printf_s(" Corrupted CFB: \"%.*s\"\n", result / 8, encrypted);
 
-		result = des_decrypt_ecb(encrypted, result, decrypted, key);
-		printf(" Decrypted ECB: \"%s\"\n\n", decrypted);
+		result = des_decrypt_cfb(encrypted, result, decrypted, key, iv, BIT_LEN);
+		printf(" Decrypted CFB: \"%s\"\n\n", decrypted);
+
+		// OFB mode
+		result = des_encrypt_ofb(source, len * 8, encrypted, key, iv, BIT_LEN);
+		printf_s(" Encrypted OFB: \"%.*s\"\n", result / 8, encrypted);
+
+		result = des_decrypt_ofb(encrypted, result, decrypted, key, iv, BIT_LEN);
+		printf(" Decrypted OFB: \"%s\"\n", decrypted);
+
+		encrypted[0] = InvertBit(encrypted[0], 2);
+		printf_s(" Corrupted OFB: \"%.*s\"\n", result / 8, encrypted);
+
+		result = des_decrypt_ofb(encrypted, result, decrypted, key, iv, BIT_LEN);
+		printf(" Decrypted OFB: \"%s\"\n\n", decrypted);
 	}
 	catch (char *e)
 	{
