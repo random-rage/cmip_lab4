@@ -1,6 +1,7 @@
 // lab4.cpp: определяет точку входа для консольного приложения.
 //
 #define MSG_LEN 256
+#define BIT_LEN 44
 
 #include "stdafx.h"
 #include "lcg.h"
@@ -71,16 +72,16 @@ int main()
 		printf(" Decrypted OFB: \"%s\"\n\n", decrypted);
 */
 		// CFB mode
-		result = des_encrypt_cfb(source, len * 8, encrypted, key, iv, 44);
+		result = des_encrypt_cfb(source, len * 8, encrypted, key, iv, BIT_LEN);
 		printf_s(" Encrypted CFB: \"%.*s\"\n", result / 8, encrypted);
 
-		result = des_decrypt_cfb(encrypted, result, decrypted, key, iv, 44);
+		result = des_decrypt_cfb(encrypted, result, decrypted, key, iv, BIT_LEN);
 		printf(" Decrypted CFB: \"%s\"\n", decrypted);
 
 		encrypted[0] = InvertBit(encrypted[0], 2);
 		printf_s(" Corrupted CFB: \"%.*s\"\n", result / 8, encrypted);
 
-		result = des_decrypt_cfb(encrypted, result, decrypted, key, iv, 44);
+		result = des_decrypt_cfb(encrypted, result, decrypted, key, iv, BIT_LEN);
 		printf(" Decrypted CFB: \"%s\"\n\n", decrypted);
 
 		len = AppendRandom(lcg, source, len);

@@ -964,7 +964,7 @@ ulong des_encrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64
 		throw "Length of the source buffer must be multiple of blocklen!";
 
 	ulong64 keys[16];
-	ULong64 block, vector;
+	ULong64 result, vector;
 	ulong i = 0;
 	
 	vector.s = iv;
@@ -972,17 +972,15 @@ ulong des_encrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64
 
 	for (; i < srclen; i += blocklen)
 	{
-		vector.s = des_encrypt_block(vector.s, keys);
+		result.s = des_encrypt_block(vector.s, keys);
 
-		block = vector;
-		block.v >>= 64 - blocklen;
-
-		block.v ^= get_block_by_offset(src, i, blocklen);
+		result.v >>= 64 - blocklen;
+		result.v ^= get_block_by_offset(src, i, blocklen);
 
 		vector.v <<= blocklen;
-		vector.v |= block.v;
+		vector.v |= result.v;
 
-		put_block_by_offset(dst, i, block.v, blocklen);
+		put_block_by_offset(dst, i, result.v, blocklen);
 	}
 
 	return i;
@@ -997,8 +995,8 @@ ulong des_decrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64
 		throw "Length of the source buffer must be multiple of blocklen!";
 
 	ulong64 keys[16];
-	ULong64 block, vector;
-	unsigned long long result;
+	ULong64 result, vector;
+	unsigned long long block;
 	ulong i = 0;
 
 	vector.s = iv;
@@ -1006,16 +1004,15 @@ ulong des_decrypt_cfb(uchar *src, ulong srclen, uchar *dst, ulong64 key, ulong64
 
 	for (; i < srclen; i += blocklen)
 	{
-		vector.s = des_encrypt_block(vector.s, keys);
+		result.s = des_encrypt_block(vector.s, keys);
 
-		result = vector.v >> 64 - blocklen;
-
-		block.v = get_block_by_offset(src, i, blocklen);
+		result.v >>= 64 - blocklen;
+		block = get_block_by_offset(src, i, blocklen);
 
 		vector.v <<= blocklen;
-		vector.v |= block.v;
+		vector.v |= block;
 
-		put_block_by_offset(dst, i, block.v ^ result, blocklen);
+		put_block_by_offset(dst, i, block ^ result.v, blocklen);
 	}
 
 	return i;
@@ -1051,10 +1048,11 @@ unsigned long long get_block_by_offset(uchar *src, ulong offset, ulong blocklen)
 
 void put_block_by_offset(uchar *dst, ulong offset, unsigned long long block, ulong blocklen)
 {
+	offset += blocklen - 1;
 	for (ulong i = 0; i < blocklen; i++)
 	{
 		PUT_BIT_BE(block % 2 == 1, dst, offset / 8, offset % 8);
-		offset++;
+		offset--;
 		block >>= 1;
 	}
 }
